@@ -1,4 +1,36 @@
 cmake_minimum_required(VERSION 3.30)
+
+macro(exit)
+    message(STATUS "Terminating ...")
+    return()
+endmacro()
+
+function(print_projects)
+    message(STATUS "\nFound Projects ... ")
+    foreach(proj IN LISTS ARGN)
+        message(STATUS "${proj}")
+    endforeach()
+endfunction()
+
+# Recursively traverse actual folder and check for every Root CMakeLists.txt
+# if found, add to project list. That way we can give appropriate usage information
+function(find_cmake_lists current_dir all_projects)
+    file(GLOB children RELATIVE ${current_dir} ${current_dir}/*)
+    foreach(child ${children})
+        if(IS_DIRECTORY ${current_dir}/${child})
+            if(EXISTS "${current_dir}/${child}/CMakeLists.txt")
+                message(STATUS "Found CMakeLists.txt in ${current_dir}/${child}")
+                list(APPEND child_list_internal ${child})
+            endif()
+            find_cmake_lists(${current_dir}/${child} child_list)
+        endif()
+    endforeach()
+    set(all_projects ${child_list_internal} PARENT_SCOPE)
+endfunction()
+
+set(all_projects "")
+find_cmake_lists(${CMAKE_SOURCE_DIR} all_projects)
+
 if(${CMAKE_ARGC} EQUAL 5)
     set(project_name ${CMAKE_ARGV4})
 elseif(${CMAKE_ARGC} EQUAL 6)
@@ -8,11 +40,13 @@ elseif(${CMAKE_ARGC} EQUAL 4)
 elseif(${CMAKE_ARGC} LESS 4)
     message(STATUS "Usage: cmake <Optional Arguments> -P build.cmake <projectname>")
     message(STATUS "Optional Arguments: -DMSVC_VERSION=\"<version>\" -DWIN_SDK_VERSION=\"<version>\"")
-    message(FATAL_ERROR "")
+    message(STATUS "Projectname: Name of a directory containing a CMakeLists.txt in the directory where build.cmake is contained")
+    print_projects(${all_projects})
+    exit()
 endif()
 
 message("argc: ${CMAKE_ARGC}")
-message("projectname ${project_name}")
+message("projectname \"${project_name}\"")
 
 # Find MSVC versions
 function(get_msvc_versions result)
@@ -29,7 +63,7 @@ get_msvc_versions(msvc_versions)
 # Check MSVC Version provided
 if(NOT DEFINED MSVC_VERSION)
     # No defined MSVC Version means we are about to use the newest one found on the machine
-    message(STATUS "MSVC_VERSION needs to be provided.\nFollowing MSVC Versions were found.")
+    message(STATUS "\nMSVC_VERSION needs to be provided.\nFollowing MSVC Versions were found.")
         foreach(version IN LISTS msvc_versions)
             message(STATUS "MSVC Version: ${version}")
         endforeach()
@@ -40,7 +74,7 @@ if(NOT DEFINED MSVC_VERSION)
     if(NOT DEFINED MSVC_VERSION)
         message(FATAL_ERROR "No MSVC installed on machine. Install first! Terminating ...")
     endif()
-    message(STATUS "Generating using MSVC Version: ${MSVC_VERSION}")
+    message(STATUS "Using MSVC Version: ${MSVC_VERSION}")
 else()
     list(FIND msvc_versions ${MSVC_VERSION} index)
     if(index EQUAL -1)
@@ -67,7 +101,7 @@ get_windows_sdk_versions(sdk_versions)
 
 # Check Windows SDK Version provided
 if(NOT DEFINED WIN_SDK_VERSION)
-    message(STATUS "WIN_SDK_VERSION needs to be provided.\nFollowing SDK Versions were found.")
+    message(STATUS "\nWIN_SDK_VERSION needs to be provided.\nFollowing SDK Versions were found.")
         foreach(version IN LISTS sdk_versions)
             message(STATUS "Windows SDK version: ${version}")
         endforeach()
@@ -93,30 +127,10 @@ else()
     endif()
 endif()
 
-# Recursively traverse actual folder and check for every Root CMakeLists.txt
-# if found, add to project list. That way we can give appropriate usage information
-function(find_cmake_lists current_dir all_projects)
-    file(GLOB children RELATIVE ${current_dir} ${current_dir}/*)
-    foreach(child ${children})
-        if(IS_DIRECTORY ${current_dir}/${child})
-            if(EXISTS "${current_dir}/${child}/CMakeLists.txt")
-                message(STATUS "Found CMakeLists.txt in ${current_dir}/${child}")
-                list(APPEND child_list_internal ${child})
-            endif()
-            find_cmake_lists(${current_dir}/${child} child_list)
-        endif()
-    endforeach()
-    set(all_projects ${child_list_internal} PARENT_SCOPE)
-endfunction()
-
-set(all_projects "")
-find_cmake_lists(${CMAKE_SOURCE_DIR} all_projects)
 if(NOT ${project_name} IN_LIST all_projects)
-    message(STATUS "Provided project ${projectname} is not valid. Provide a valid project from: ")
-    foreach(proj ${all_projects})
-        message(STATUS "${proj}")
-    endforeach()
-    message(FATAL_ERROR "")
+    message(STATUS "\nProvided project \"${project_name}\" is not valid. Provide a valid project!")
+    print_projects(${all_projects})
+    exit()
 endif()
 
 # In this file we use a CMAKE_BINARY_DIR which is temporary, we need it to be an absolute path
@@ -159,7 +173,7 @@ endforeach()
 # Run the specified build
 execute_process(
     COMMAND ${CMAKE_COMMAND} 
-    "-B ${CMAKE_CURRENT_SOURCE_DIR}/build" 
+    "-B ${CMAKE_CURRENT_SOURCE_DIR}/build_${project_name}" 
     "-H ${CMAKE_CURRENT_SOURCE_DIR}/${project_name}" 
     "--fresh" 
     "-DCMAKE_MAKE_PROGRAM=${CMAKE_CURRENT_SOURCE_DIR}/tools/ninja/ninja.exe"
@@ -176,4 +190,4 @@ if(result)
 endif()
 file(REMOVE_RECURSE ${tmp_dir})
 
-file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/tools/ninja/ninja.exe" DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}/build")
+file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/tools/ninja/ninja.exe" DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}/build_${project_name}")
