@@ -45,8 +45,7 @@ elseif(${CMAKE_ARGC} LESS 4)
     exit()
 endif()
 
-message("argc: ${CMAKE_ARGC}")
-message("projectname \"${project_name}\"")
+message("\nYou are about to generate \"${project_name}\"")
 
 # Find MSVC versions
 function(get_msvc_versions result)
