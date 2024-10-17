@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.30)
 
 macro(exit)
-    message(STATUS "Terminating ...")
+    message(STATUS "\nTerminating ...")
     return()
 endmacro()
 
@@ -38,7 +38,7 @@ elseif(${CMAKE_ARGC} EQUAL 6)
 elseif(${CMAKE_ARGC} EQUAL 4)
     set(project_name ${CMAKE_ARGV3})
 elseif(${CMAKE_ARGC} LESS 4)
-    message(STATUS "Usage: cmake <Optional Arguments> -P build.cmake <projectname>")
+    message(STATUS "\nUsage: cmake <Optional Arguments> -P build.cmake <projectname>")
     message(STATUS "Optional Arguments: -DMSVC_VERSION=\"<version>\" -DWIN_SDK_VERSION=\"<version>\"")
     message(STATUS "Projectname: Name of a directory containing a CMakeLists.txt in the directory where build.cmake is contained")
     print_projects(${all_projects})
