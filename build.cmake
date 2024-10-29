@@ -49,15 +49,27 @@ message("\nYou are about to generate \"${project_name}\"")
 
 # Find MSVC versions
 function(get_msvc_versions result)
+    #case 1: Visual Studio is installed on the target machine
     file(GLOB MSVC_VERSIONS "C:/Program Files (x86)/Microsoft Visual Studio/*/Professional/VC/Tools/MSVC/*")
     set(version_list "")
     foreach(MSVC_VERSION IN LISTS MSVC_VERSIONS)
         get_filename_component(version_number ${MSVC_VERSION} NAME)
         list(APPEND version_list ${version_number})
     endforeach()
+
+    if(NOT version_list OR version_list STREQUAL "NOTFOUND")
+        message("Did not find any MSVC installation!")
+    endif()
+    #case 2: Only Build Tools are installed in C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools
     set(${result} ${version_list} PARENT_SCOPE)
 endfunction()
 get_msvc_versions(msvc_versions)
+message("result:"${msvc_versions})
+
+if(msvc_versions STREQUAL "NOTFOUND")
+message("notfound!!")
+    exit()
+endif()
 
 # Check MSVC Version provided
 if(NOT DEFINED MSVC_VERSION)
