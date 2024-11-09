@@ -48,33 +48,47 @@ endif()
 message("\nYou are about to generate \"${project_name}\"")
 
 # Find MSVC versions
-function(get_msvc_versions result)
+function(find_msvc_versions result path_to_vcvarsall)
+
     #case 1: Visual Studio is installed on the target machine
     file(GLOB MSVC_VERSIONS "C:/Program Files (x86)/Microsoft Visual Studio/*/Professional/VC/Tools/MSVC/*")
     set(version_list "")
-    foreach(MSVC_VERSION IN LISTS MSVC_VERSIONS)
-        get_filename_component(version_number ${MSVC_VERSION} NAME)
+    foreach(MSVC_VERSION_VERSION_PATH IN LISTS MSVC_VERSIONS)
+        string(REGEX REPLACE "(VC/).*" "\\1" vc_dir_path "${MSVC_VERSION_VERSION_PATH}")
+        get_filename_component(version_number ${MSVC_VERSION_VERSION_PATH} NAME)
         list(APPEND version_list ${version_number})
     endforeach()
 
-    if(NOT version_list OR version_list STREQUAL "NOTFOUND")
-        message("Did not find any MSVC installation!")
+    # Enter case 2
+    if(NOT version_list)
+        message("No Visual Studio Installation found on machine.")
+        #case 2: Only Build Tools are installed e.g C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools
+        file(GLOB MSVC_VERSIONS "C:/Program Files (x86)/Microsoft Visual Studio/*/BuildTools/VC/Tools/MSVC/*")
+        foreach(MSVC_VERSION_VERSION_PATH IN LISTS MSVC_VERSIONS)
+            string(REGEX REPLACE "(VC/).*" "\\1" vc_dir_path "${MSVC_VERSION_VERSION_PATH}")
+            get_filename_component(version_number ${MSVC_VERSION_VERSION_PATH} NAME)
+            list(APPEND version_list ${version_number})
+        endforeach()
+        if(NOT version_list OR version_list STREQUAL "NOTFOUND")
+            message("No MsBuild Tools installed")
+        endif()
     endif()
-    #case 2: Only Build Tools are installed in C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools
     set(${result} ${version_list} PARENT_SCOPE)
+    set(${path_to_vcvarsall} "${vc_dir_path}" PARENT_SCOPE)
 endfunction()
-get_msvc_versions(msvc_versions)
-message("result:"${msvc_versions})
 
-if(msvc_versions STREQUAL "NOTFOUND")
-message("notfound!!")
+find_msvc_versions(msvc_versions path_to_vcdir)
+
+# No MSVC on machine found
+if(NOT msvc_versions)
+    message(FATAL_ERROR "No MSVC installed on machine.")
     exit()
 endif()
 
-# Check MSVC Version provided
+# Check MSVC Version provided via command line
 if(NOT DEFINED MSVC_VERSION)
     # No defined MSVC Version means we are about to use the newest one found on the machine
-    message(STATUS "\nMSVC_VERSION needs to be provided.\nFollowing MSVC Versions were found.")
+    message(STATUS "\nNo custom MSVC_VERSION was passed via command line. Using newest MSVC_VERSION from machine.\nFollowing MSVC Versions were found.")
         foreach(version IN LISTS msvc_versions)
             message(STATUS "MSVC Version: ${version}")
         endforeach()
@@ -82,11 +96,9 @@ if(NOT DEFINED MSVC_VERSION)
     math(EXPR last_index "${msvc_version_list_length} - 1")
     list(GET msvc_versions ${last_index} newest_version)
     set(MSVC_VERSION ${newest_version})
-    if(NOT DEFINED MSVC_VERSION)
-        message(FATAL_ERROR "No MSVC installed on machine. Install first! Terminating ...")
-    endif()
     message(STATUS "Using MSVC Version: ${MSVC_VERSION}")
 else()
+    #check if provided MSVC version is actually found on machine
     list(FIND msvc_versions ${MSVC_VERSION} index)
     if(index EQUAL -1)
         foreach(version IN LISTS msvc_versions)
@@ -110,9 +122,15 @@ function(get_windows_sdk_versions result)
 endfunction()
 get_windows_sdk_versions(sdk_versions)
 
+# No Windows SDK on machine found
+if(NOT sdk_versions)
+    message(FATAL_ERROR "No Windows SDK installed on machine.")
+    exit()
+endif()
+
 # Check Windows SDK Version provided
 if(NOT DEFINED WIN_SDK_VERSION)
-    message(STATUS "\nWIN_SDK_VERSION needs to be provided.\nFollowing SDK Versions were found.")
+    message(STATUS "\nNo custom WIN_SDK_VERSION was passed via command line. Using newest WIN_SDK_VERSION from machine.\nFollowing Windows SDK Versions were found.")
         foreach(version IN LISTS sdk_versions)
             message(STATUS "Windows SDK version: ${version}")
         endforeach()
@@ -121,10 +139,6 @@ if(NOT DEFINED WIN_SDK_VERSION)
     math(EXPR last_index "${sdk_version_list_length} - 1")
     list(GET sdk_versions ${last_index} newest_version)
     set(WIN_SDK_VERSION ${newest_version})
-    if(NOT DEFINED WIN_SDK_VERSION)
-        message(FATAL_ERROR "No Windows SDK installed on machine. Install first! Terminating ...")
-    endif()
-    
     message(STATUS "Using Windows SDK Version ${WIN_SDK_VERSION}")
 else()
     list(FIND sdk_versions ${WIN_SDK_VERSION} index)
@@ -157,8 +171,8 @@ set(ENVIRONMENT_OUTPUT_FILE "${CMAKE_BINARY_DIR}/environment_output.txt")
 set(ARCH "x64")
 
 # Path to vcvarsall
-set(VCVARSALL "C:/Program Files/Microsoft Visual Studio/2022/Professional/VC/Auxiliary/Build/vcvarsall.bat")
-set(MSBUILD_INCLUDES "C:/Program Files (x86)/Microsoft Visual Studio/2019/Professional/VC/Tools/MSVC/${MSVC_VERSION}/include")
+set(VCVARSALL "${path_to_vcdir}Auxiliary/Build/vcvarsall.bat")
+set(MSBUILD_INCLUDES "${path_to_vcdir}Tools/MSVC/${MSVC_VERSION}/include")
 
 # Generate a .bat script which sets up msbuild environment and saves all environment variables afterwards in file
 file(WRITE ${CMAKE_BINARY_DIR}/output_environment.bat 
@@ -188,10 +202,10 @@ execute_process(
     "-H ${CMAKE_CURRENT_SOURCE_DIR}/${project_name}" 
     "--fresh" 
     "-DCMAKE_MAKE_PROGRAM=${CMAKE_CURRENT_SOURCE_DIR}/tools/ninja/ninja.exe"
-    "-DCMAKE_CXX_FLAGS=/DWIN32 /D_WINDOWS /EHsc -I\"C:/Program\ Files\ (x86)/Microsoft\ Visual\ Studio/2019/Professional/VC/Tools/MSVC/${MSVC_VERSION}/include\" -I\"C:/Program\ Files\ (x86)/Windows\ Kits/10/Include/${WIN_SDK_VERSION}/ucrt\""
-    "-DCMAKE_CXX_FLAGS_DEBUG=/Ob0 /Od /RTC1 -I\"C:/Program\ Files\ (x86)/Microsoft\ Visual\ Studio/2019/Professional/VC/Tools/MSVC/${MSVC_VERSION}/include\" -I\"C:/Program\ Files\ (x86)/Windows\ Kits/10/Include/${WIN_SDK_VERSION}/ucrt\""
-    "-DCMAKE_CXX_FLAGS_RELEASE=/O2 /Ob2 /DNDEBUG -I\"C:/Program\ Files\ (x86)/Microsoft\ Visual\ Studio/2019/Professional/VC/Tools/MSVC/${MSVC_VERSION}/include\" -I\"C:/Program\ Files\ (x86)/Windows\ Kits/10/Include/${WIN_SDK_VERSION}/ucrt\""
-    "-DCMAKE_EXE_LINKER_FLAGS=/machine:x64 /LIBPATH:\"C:/Program\ Files\ (x86)/Windows\ Kits/10/Lib/${WIN_SDK_VERSION}/um/x64\" /LIBPATH:\"C:/Program\ Files\ (x86)/Microsoft\ Visual\ Studio/2019/Professional/VC/Tools/MSVC/${MSVC_VERSION}/lib/x64\" /LIBPATH:\"C:/Program\ Files\ (x86)/Windows\ Kits/10/Lib/${WIN_SDK_VERSION}/ucrt/x64\""
+    "-DCMAKE_CXX_FLAGS=/DWIN32 /D_WINDOWS /EHsc -I\"${MSBUILD_INCLUDES}\" -I\"C:/Program\ Files\ (x86)/Windows\ Kits/10/Include/${WIN_SDK_VERSION}/ucrt\""
+    "-DCMAKE_CXX_FLAGS_DEBUG=/Ob0 /Od /RTC1 -I\"${MSBUILD_INCLUDES}\" -I\"C:/Program\ Files\ (x86)/Windows\ Kits/10/Include/${WIN_SDK_VERSION}/ucrt\""
+    "-DCMAKE_CXX_FLAGS_RELEASE=/O2 /Ob2 /DNDEBUG -I\"${MSBUILD_INCLUDES}\" -I\"C:/Program\ Files\ (x86)/Windows\ Kits/10/Include/${WIN_SDK_VERSION}/ucrt\""
+    "-DCMAKE_EXE_LINKER_FLAGS=/machine:x64 /LIBPATH:\"C:/Program\ Files\ (x86)/Windows\ Kits/10/Lib/${WIN_SDK_VERSION}/um/x64\" /LIBPATH:\"${path_to_vcdir}Tools/MSVC/${MSVC_VERSION}/lib/x64\" /LIBPATH:\"C:/Program\ Files\ (x86)/Windows\ Kits/10/Lib/${WIN_SDK_VERSION}/ucrt/x64\""
     "-G Ninja"
     RESULT_VARIABLE result
 )
