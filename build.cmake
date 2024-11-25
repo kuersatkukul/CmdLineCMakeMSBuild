@@ -111,9 +111,6 @@ endif()
 
 find_cmake_lists(${CMAKE_SOURCE_DIR} all_projects)
 if(NOT DEFINED project_name)
-    # TODO: quit if no project name provided
-    #       For that use the argument parsing function. Check if there is an element after .\build.cmake
-    #       and use that as project name
     message(FATAL_ERROR "No Project Name provided!")
     print_projects(${all_projects})
     exit()
