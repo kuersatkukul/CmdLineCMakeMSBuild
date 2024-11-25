@@ -5,6 +5,33 @@ macro(exit)
     return()
 endmacro()
 
+function(create_project project_name)
+    set(work_dir ${CMAKE_CURRENT_LIST_DIR})
+    set(to_be_created_project_dir "${CMAKE_CURRENT_LIST_DIR}/${project_name}")
+    set(cmake_lists_txt "${CMAKE_CURRENT_LIST_DIR}/${project_name}/CMakeLists.txt")
+    set(main_cpp "${CMAKE_CURRENT_LIST_DIR}/${project_name}/main.cpp")
+
+    if(NOT EXISTS ${to_be_created_project_dir})
+        message("Trying to create project ...")
+        file(MAKE_DIRECTORY ${to_be_created_project_dir})
+        file(WRITE ${cmake_lists_txt} "cmake_minimum_required(VERSION 3.30)
+project(${project_name})
+add_executable(${project_name} main.cpp)")
+
+        file(WRITE ${main_cpp} "#include <iostream>
+
+int main()
+\{
+    std::cout << \"Hello CMake!\" << std::endl;
+    return 0;
+\}
+")
+    else()
+        message("Skipping project creation because project already exists.")
+    endif()
+
+endfunction()
+
 function(print_projects)
     message(STATUS "\nFound Projects ... ")
     foreach(proj IN LISTS ARGN)
@@ -19,7 +46,7 @@ function(find_cmake_lists current_dir all_projects)
     foreach(child ${children})
         if(IS_DIRECTORY ${current_dir}/${child})
             if(EXISTS "${current_dir}/${child}/CMakeLists.txt")
-                message(STATUS "Found CMakeLists.txt in ${current_dir}/${child}")
+                #message(STATUS "Found CMakeLists.txt in ${current_dir}/${child}")
                 list(APPEND child_list_internal ${child})
             endif()
             find_cmake_lists(${current_dir}/${child} child_list)
@@ -29,22 +56,65 @@ function(find_cmake_lists current_dir all_projects)
 endfunction()
 
 set(all_projects "")
-find_cmake_lists(${CMAKE_SOURCE_DIR} all_projects)
 
-if(${CMAKE_ARGC} EQUAL 5)
-    set(project_name ${CMAKE_ARGV4})
-elseif(${CMAKE_ARGC} EQUAL 6)
-    set(project_name ${CMAKE_ARGV5})
-elseif(${CMAKE_ARGC} EQUAL 4)
-    set(project_name ${CMAKE_ARGV3})
-elseif(${CMAKE_ARGC} LESS 4)
+function(parse_args shall_create_project project_name)
+    foreach(i RANGE 0 ${CMAKE_ARGC})
+        string(TOLOWER "${CMAKE_ARGV${i}}" argument)
+
+        # check projectname
+        if(record_projectname)
+            set(project_name ${CMAKE_ARGV${i}} PARENT_SCOPE)
+            # check argument after project_name, because there should be none!
+            #MATH(EXPR j "${i}+1")
+            #string(TOLOWER "${CMAKE_ARGV${j}}" arg_too_much)
+            #if(DEFINED arg_too_much)
+            #    message("argument after project_name!")
+            #endif()
+            break()
+        endif()
+
+        # check if create flag provided
+        string(REGEX MATCH "^-create$" found "${argument}")
+        if(found)
+            set(shall_create_project TRUE PARENT_SCOPE) 
+            message("Provided -create flag.")
+            continue()
+        endif()
+
+        # if we find build.cmake, next iteration we want to check projectname
+        string(REGEX MATCH "^build.cmake$" found "${argument}")
+        if(found)
+            set(record_projectname TRUE)
+        endif()
+    endforeach()
+endfunction()
+
+set(shall_create_project FALSE)
+parse_args(shall_create_project project_name)
+
+if(${CMAKE_ARGC} LESS 4)
     message(STATUS "\nUsage: cmake <Optional Arguments> -P build.cmake <projectname>")
-    message(STATUS "Optional Arguments: -DMSVC_VERSION=\"<version>\" -DWIN_SDK_VERSION=\"<version>\"")
+    message(STATUS "Optional Arguments:")
+    message(STATUS "\t-DMSVC_VERSION=\"<version>\"")
+    message(STATUS "\t-DWIN_SDK_VERSION=\"<version>\"")
+    message(STATUS "\t-create")
     message(STATUS "Projectname: Name of a directory containing a CMakeLists.txt in the directory where build.cmake is contained")
+    find_cmake_lists(${CMAKE_SOURCE_DIR} all_projects)
     print_projects(${all_projects})
     exit()
 endif()
 
+message("projectname: ${project_name}")
+if(shall_create_project)
+    create_project(${project_name})
+endif()
+
+find_cmake_lists(${CMAKE_SOURCE_DIR} all_projects)
+if(NOT DEFINED project_name)
+    message(FATAL_ERROR "No Project Name provided!")
+    print_projects(${all_projects})
+    exit()
+endif()
 message("\nYou are about to generate \"${project_name}\"")
 
 # Find MSVC versions
@@ -128,7 +198,7 @@ if(NOT sdk_versions)
     exit()
 endif()
 
-# Check Windows SDK Version provided
+# Check Windows SDK Version provided via command line
 if(NOT DEFINED WIN_SDK_VERSION)
     message(STATUS "\nNo custom WIN_SDK_VERSION was passed via command line. Using newest WIN_SDK_VERSION from machine.\nFollowing Windows SDK Versions were found.")
         foreach(version IN LISTS sdk_versions)
