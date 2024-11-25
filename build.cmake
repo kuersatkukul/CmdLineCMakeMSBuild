@@ -5,11 +5,30 @@ macro(exit)
     return()
 endmacro()
 
-function(create_project)
-    # check if project exists
-    # create if not existing
-    # skip if already existing
-    message("creating project ..")
+function(create_project project_name)
+    set(work_dir ${CMAKE_CURRENT_LIST_DIR})
+    set(to_be_created_project_dir "${CMAKE_CURRENT_LIST_DIR}/${project_name}")
+    set(cmake_lists_txt "${CMAKE_CURRENT_LIST_DIR}/${project_name}/CMakeLists.txt")
+    set(main_cpp "${CMAKE_CURRENT_LIST_DIR}/${project_name}/main.cpp")
+
+    if(NOT EXISTS ${to_be_created_project_dir})
+        message("Trying to create project ...")
+        file(MAKE_DIRECTORY ${to_be_created_project_dir})
+        file(WRITE ${cmake_lists_txt} "cmake_minimum_required(VERSION 3.30)
+project(${project_name})
+add_executable(${project_name} main.cpp)")
+
+        file(WRITE ${main_cpp} "#include <iostream>
+
+int main()
+\{
+    std::cout << \"Hello CMake!\" << std::endl;
+    return 0;
+\}
+")
+    else()
+        message("Skipping project creation because project already exists.")
+    endif()
 
 endfunction()
 
@@ -37,20 +56,41 @@ function(find_cmake_lists current_dir all_projects)
 endfunction()
 
 set(all_projects "")
-find_cmake_lists(${CMAKE_SOURCE_DIR} all_projects)
 
-function(parse_args shall_create_project)
+function(parse_args shall_create_project project_name)
     foreach(i RANGE 0 ${CMAKE_ARGC})
-        string(TOLOWER "${CMAKE_ARGV${i}}" potential_create_flag)
-        string(REGEX MATCH "^-create$" found "${potential_create_flag}")
+        string(TOLOWER "${CMAKE_ARGV${i}}" argument)
+
+        # check projectname
+        if(record_projectname)
+            set(project_name ${CMAKE_ARGV${i}} PARENT_SCOPE)
+            # check argument after project_name, because there should be none!
+            #MATH(EXPR j "${i}+1")
+            #string(TOLOWER "${CMAKE_ARGV${j}}" arg_too_much)
+            #if(DEFINED arg_too_much)
+            #    message("argument after project_name!")
+            #endif()
+            break()
+        endif()
+
+        # check if create flag provided
+        string(REGEX MATCH "^-create$" found "${argument}")
         if(found)
             set(shall_create_project TRUE PARENT_SCOPE) 
+            message("Provided -create flag.")
+            continue()
+        endif()
+
+        # if we find build.cmake, next iteration we want to check projectname
+        string(REGEX MATCH "^build.cmake$" found "${argument}")
+        if(found)
+            set(record_projectname TRUE)
         endif()
     endforeach()
 endfunction()
 
 set(shall_create_project FALSE)
-parse_args(shall_create_project)
+parse_args(shall_create_project project_name)
 
 if(${CMAKE_ARGC} LESS 4)
     message(STATUS "\nUsage: cmake <Optional Arguments> -P build.cmake <projectname>")
@@ -59,15 +99,18 @@ if(${CMAKE_ARGC} LESS 4)
     message(STATUS "\t-DWIN_SDK_VERSION=\"<version>\"")
     message(STATUS "\t-create")
     message(STATUS "Projectname: Name of a directory containing a CMakeLists.txt in the directory where build.cmake is contained")
+    find_cmake_lists(${CMAKE_SOURCE_DIR} all_projects)
     print_projects(${all_projects})
     exit()
 endif()
 
+message("projectname: ${project_name}")
 if(shall_create_project)
-    create_project()
+    create_project(${project_name})
 endif()
 
-if(NOT ${project_name})
+find_cmake_lists(${CMAKE_SOURCE_DIR} all_projects)
+if(NOT DEFINED project_name)
     # TODO: quit if no project name provided
     #       For that use the argument parsing function. Check if there is an element after .\build.cmake
     #       and use that as project name
