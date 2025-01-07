@@ -5,7 +5,32 @@ macro(exit)
     return()
 endmacro()
 
+# Deletes all folders which have prefix "build_"
+function(clean_all_builds current_dir)
+    file(GLOB children RELATIVE ${current_dir} ${current_dir}/*)
+    foreach(child ${children})
+        if(IS_DIRECTORY ${current_dir}/${child})
+            get_filename_component(dir_name ${current_dir}/${child} NAME) # this finds all names of items in the folder
+            string(SUBSTRING ${dir_name} 0 6 dir_prefix)
+            if(${dir_prefix} STREQUAL "build_")
+               message("Deleting ${current_dir}/${child}")
+               file(REMOVE_RECURSE ${current_dir}/${child})
+            endif()
+        endif()
+    endforeach()
+endfunction()
+
 function(create_project project_name)
+    # Download Ninja
+    #ExternalProject_Add(ninja-build
+    #    URL https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-win.zip
+    #    DOWNLOAD_NO_EXTRACT FALSE
+    #    CONFIGURE_COMMAND ""
+    #    BUILD_COMMAND ""
+    #    INSTALL_COMMAND ""
+    #    DOWNLOAD_DIR ${CMAKE_CURRENT_BINARY_DIR}
+    #    DOWNLOAD_NAME ninja-win.zip
+    #)
     set(work_dir ${CMAKE_CURRENT_LIST_DIR})
     set(to_be_created_project_dir "${CMAKE_CURRENT_LIST_DIR}/${project_name}")
     set(cmake_lists_txt "${CMAKE_CURRENT_LIST_DIR}/${project_name}/CMakeLists.txt")
@@ -80,6 +105,13 @@ function(parse_args shall_create_project project_name)
             message("Provided -create flag.")
             continue()
         endif()
+        
+        string(REGEX MATCH "^-cleanbuilds$" found "${argument}")
+        if(found)
+            set(clean_builds TRUE PARENT_SCOPE) 
+            message("Provided -cleanBuilds flag.")
+            continue()
+        endif()
 
         # if we find build.cmake, next iteration we want to check projectname
         string(REGEX MATCH "^build.cmake$" found "${argument}")
@@ -98,23 +130,28 @@ if(${CMAKE_ARGC} LESS 4)
     message(STATUS "\t-DMSVC_VERSION=\"<version>\"")
     message(STATUS "\t-DWIN_SDK_VERSION=\"<version>\"")
     message(STATUS "\t-create")
+    message(STATUS "\t-cleanbuilds")
     message(STATUS "Projectname: Name of a directory containing a CMakeLists.txt in the directory where build.cmake is contained")
     find_cmake_lists(${CMAKE_SOURCE_DIR} all_projects)
     print_projects(${all_projects})
     exit()
 endif()
 
-message("projectname: ${project_name}")
-if(shall_create_project)
-    create_project(${project_name})
+if(clean_builds)
+    clean_all_builds(${CMAKE_SOURCE_DIR})
 endif()
 
-find_cmake_lists(${CMAKE_SOURCE_DIR} all_projects)
 if(NOT DEFINED project_name)
     message(FATAL_ERROR "No Project Name provided!")
     print_projects(${all_projects})
     exit()
 endif()
+
+if(shall_create_project)
+    create_project(${project_name})
+endif()
+
+find_cmake_lists(${CMAKE_SOURCE_DIR} all_projects)
 message("\nYou are about to generate \"${project_name}\"")
 
 # Find MSVC versions
