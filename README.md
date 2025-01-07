@@ -1,17 +1,26 @@
 ## Purpose
-This simple tool is intended for developers who are using Visual Studio and want to have a quick alternative
-to create programs without the need to directly use MSBuild tools on the command line.
-Since there is no possibility to simply use MSBuild tools without Visual Studio ```CmdLineCMakeMSBuild``` exists.
-The idea is to basically have a C/C++ project built using MSBuild tools without the need of Visual Studio.
+This simple tool is intended to be used on Windows operating system to be able to build C/C++ projects using ```MSBuild``` without the need of ```Visual Studio```.
+
+## What does CmdLineCMakeMSBuild do?
+It uses ```CMake```, ```MSBuild``` and ```Ninja``` to create a C/C++ project without the need of Visual Studio.
+
+## What do you need to use it?
+- CMake Version >= 3.30 (https://cmake.org/download/)
+- MSBuild Tools (https://aka.ms/vs/17/release/vs_BuildTools.exe)
+- Ninja Binary comes directly with the repo
 
 ## How does it work?
-The tool uses standard installation paths of MSBuild Tools (which come with Visual Studio) to get all the binaries, sources
-and includes. As a build system it uses ```Ninja``` which is also located as a standalone binary in the repository.
+Using CMake, this program sets MSBuild Tools paths and creates a simple standard project with a ```main.cpp``` and ```CMakeLists.txt``` which represent a project which can be compiled using ```Ninja``` build system.
 
 ## How to use it?
 1. Clone the repo
-2. Create a folder in the repo representing a CMake project (it has to contain at least a CMakeLists.txt)
-   - The created folder has to have the same name as the cmake project
-   - e.g the created folder is called myproject then in the according CMakeLists.txt there needs to be a call ```project(myproject)```
-3. Use cmake.exe -P build.cmake <project_name> to generate the build system
-4. cd into the ```build_<project_name>``` directory and run ```ninja.exe``` to build your binaryo
+2. In the repo run following command ```cmake -create -P build.cmake MyNewMsBuildProject```
+   - This command creates 2 folders ```MyNewMSBuildProject``` and ```build_MyNewMSBuildProject```
+   - In ```MyNewMSBuildProject``` there is a generated ```main.cpp``` and ```CMakeLists.txt``` ready to use
+   - In ```build_MyNewMSBuildProject``` there is ```Ninja``` build system to compile and link the project
+      - ```cd``` into ```build_MyNewMSBuildProject``` and run ```.\ninja.exe```
+      - Now run ```.\MyNewMSBuildProject.exe``` and enjoy!
+
+## Troubleshooting
+If there are any feature wishes or bugs just report them via Issues.
+A list of the arguments available of progame can be seen using ```cmake -P build.cmake```.
