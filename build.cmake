@@ -317,7 +317,7 @@ execute_process(
     "-B ${actual_build_dir}" 
     "-H ${CMAKE_CURRENT_SOURCE_DIR}/${project_name}" 
     "--fresh" 
-    "-DCMAKE_MAKE_PROGRAM=${CMAKE_CURRENT_SOURCE_DIR}/tools/ninja/ninja.exe"
+    "-DCMAKE_MAKE_PROGRAM=${actual_build_dir}/ninja.exe"
     "-DCMAKE_C_FLAGS=/DWIN32 /D_WINDOWS /EHsc -I\"${MSBUILD_INCLUDES}\" -I\"C:/Program\ Files\ (x86)/Windows\ Kits/10/Include/${WIN_SDK_VERSION}/ucrt\""
     "-DCMAKE_CXX_FLAGS=/DWIN32 /D_WINDOWS /EHsc -I\"${MSBUILD_INCLUDES}\" -I\"C:/Program\ Files\ (x86)/Windows\ Kits/10/Include/${WIN_SDK_VERSION}/ucrt\""
     "-DCMAKE_CXX_FLAGS_DEBUG=/Ob0 /Od /RTC1 -I\"${MSBUILD_INCLUDES}\" -I\"C:/Program\ Files\ (x86)/Windows\ Kits/10/Include/${WIN_SDK_VERSION}/ucrt\""
