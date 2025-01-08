@@ -7,10 +7,9 @@ It uses ```CMake```, ```MSBuild``` and ```Ninja``` to create a C/C++ project wit
 ## What do you need to use it?
 - CMake Version >= 3.30 (https://cmake.org/download/)
 - MSBuild Tools (https://aka.ms/vs/17/release/vs_BuildTools.exe)
-- Ninja Binary comes directly with the repo
 
 ## How does it work?
-Using CMake, this program sets MSBuild Tools paths and creates a simple standard project with a ```main.cpp``` and ```CMakeLists.txt``` which represent a project which can be compiled using ```Ninja``` build system.
+Using CMake, this program sets MSBuild Tools paths and creates a simple standard project with a ```main.cpp``` and ```CMakeLists.txt``` which represent a project which can be compiled using ```Ninja``` build system and ```MSBuild``` tools.
 
 ## How to use it?
 1. Clone the repo
@@ -23,4 +22,4 @@ Using CMake, this program sets MSBuild Tools paths and creates a simple standard
 
 ## Troubleshooting
 If there are any feature wishes or bugs just report them via Issues.
-A list of the arguments available of progame can be seen using ```cmake -P build.cmake```.
+A list of the arguments available of can be seen using ```cmake -P build.cmake```.
