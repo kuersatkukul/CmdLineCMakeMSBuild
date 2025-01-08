@@ -1,5 +1,19 @@
 cmake_minimum_required(VERSION 3.30)
 
+function(get_ninja_exe actual_build_dir)
+    if(NOT EXISTS ${actual_build_dir}/ninja.exe)
+        message("Download Ninja.exe ...")
+        set(ninja_zip "${actual_build_dir}/ninja-win.zip")
+        set(ninja_exe)
+        file(DOWNLOAD "https://github.com/ninja-build/ninja/releases/download/v1.10.2/ninja-win.zip" ${ninja_zip})
+        execute_process(
+          COMMAND ${CMAKE_COMMAND} -E tar xzf "${ninja_zip}"
+          WORKING_DIRECTORY "${actual_build_dir}"
+        )
+        file(REMOVE ${ninja_zip})
+    endif()
+endfunction()
+
 macro(exit)
     message(STATUS "\nTerminating ...")
     return()
@@ -21,16 +35,6 @@ function(clean_all_builds current_dir)
 endfunction()
 
 function(create_project project_name)
-    # Download Ninja
-    #ExternalProject_Add(ninja-build
-    #    URL https://github.com/ninja-build/ninja/releases/download/v1.12.1/ninja-win.zip
-    #    DOWNLOAD_NO_EXTRACT FALSE
-    #    CONFIGURE_COMMAND ""
-    #    BUILD_COMMAND ""
-    #    INSTALL_COMMAND ""
-    #    DOWNLOAD_DIR ${CMAKE_CURRENT_BINARY_DIR}
-    #    DOWNLOAD_NAME ninja-win.zip
-    #)
     set(work_dir ${CMAKE_CURRENT_LIST_DIR})
     set(to_be_created_project_dir "${CMAKE_CURRENT_LIST_DIR}/${project_name}")
     set(cmake_lists_txt "${CMAKE_CURRENT_LIST_DIR}/${project_name}/CMakeLists.txt")
@@ -302,10 +306,15 @@ foreach(line ${VCVARS})
     endif()
 endforeach()
 
+set(actual_build_dir ${CMAKE_CURRENT_SOURCE_DIR}/build_${project_name})
+
+# Download ninja.exe into the according binary directory
+get_ninja_exe(${actual_build_dir})
+
 # Run the specified build
 execute_process(
     COMMAND ${CMAKE_COMMAND} 
-    "-B ${CMAKE_CURRENT_SOURCE_DIR}/build_${project_name}" 
+    "-B ${actual_build_dir}" 
     "-H ${CMAKE_CURRENT_SOURCE_DIR}/${project_name}" 
     "--fresh" 
     "-DCMAKE_MAKE_PROGRAM=${CMAKE_CURRENT_SOURCE_DIR}/tools/ninja/ninja.exe"
@@ -322,5 +331,3 @@ if(result)
     message(FATAL_ERROR "Could not generate Ninja build!")
 endif()
 file(REMOVE_RECURSE ${tmp_dir})
-
-file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/tools/ninja/ninja.exe" DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}/build_${project_name}")
