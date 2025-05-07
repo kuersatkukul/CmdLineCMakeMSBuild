@@ -143,6 +143,10 @@ endif()
 
 if(clean_builds)
     clean_all_builds(${CMAKE_SOURCE_DIR})
+    message("Cleaning finished.")
+    if(NOT DEFINED project_name)
+        exit()
+    endif()
 endif()
 
 if(NOT DEFINED project_name)
@@ -318,10 +322,10 @@ execute_process(
     "-H ${CMAKE_CURRENT_SOURCE_DIR}/${project_name}" 
     "--fresh" 
     "-DCMAKE_MAKE_PROGRAM=${actual_build_dir}/ninja.exe"
-    "-DCMAKE_C_FLAGS=/DWIN32 /D_WINDOWS /EHsc -I\"${MSBUILD_INCLUDES}\" -I\"C:/Program\ Files\ (x86)/Windows\ Kits/10/Include/${WIN_SDK_VERSION}/ucrt\""
-    "-DCMAKE_CXX_FLAGS=/DWIN32 /D_WINDOWS /EHsc -I\"${MSBUILD_INCLUDES}\" -I\"C:/Program\ Files\ (x86)/Windows\ Kits/10/Include/${WIN_SDK_VERSION}/ucrt\""
-    "-DCMAKE_CXX_FLAGS_DEBUG=/Ob0 /Od /RTC1 -I\"${MSBUILD_INCLUDES}\" -I\"C:/Program\ Files\ (x86)/Windows\ Kits/10/Include/${WIN_SDK_VERSION}/ucrt\""
-    "-DCMAKE_CXX_FLAGS_RELEASE=/O2 /Ob2 /DNDEBUG -I\"${MSBUILD_INCLUDES}\" -I\"C:/Program\ Files\ (x86)/Windows\ Kits/10/Include/${WIN_SDK_VERSION}/ucrt\""
+    "-DCMAKE_C_FLAGS=/Zi /DWIN32 /D_WINDOWS /EHsc -I\"${MSBUILD_INCLUDES}\" -I\"C:/Program\ Files\ (x86)/Windows\ Kits/10/Include/${WIN_SDK_VERSION}/ucrt\""
+    "-DCMAKE_CXX_FLAGS=/Zi /DWIN32 /D_WINDOWS /EHsc -I\"${MSBUILD_INCLUDES}\" -I\"C:/Program\ Files\ (x86)/Windows\ Kits/10/Include/${WIN_SDK_VERSION}/ucrt\""
+    "-DCMAKE_CXX_FLAGS_DEBUG=/Zi /Ob0 /Od /RTC1 -I\"${MSBUILD_INCLUDES}\" -I\"C:/Program\ Files\ (x86)/Windows\ Kits/10/Include/${WIN_SDK_VERSION}/ucrt\""
+    "-DCMAKE_CXX_FLAGS_RELEASE=/Zi /O2 /Ob2 /DNDEBUG -I\"${MSBUILD_INCLUDES}\" -I\"C:/Program\ Files\ (x86)/Windows\ Kits/10/Include/${WIN_SDK_VERSION}/ucrt\""
     "-DCMAKE_EXE_LINKER_FLAGS=/machine:x64 /LIBPATH:\"C:/Program\ Files\ (x86)/Windows\ Kits/10/Lib/${WIN_SDK_VERSION}/um/x64\" /LIBPATH:\"${path_to_vcdir}Tools/MSVC/${MSVC_VERSION}/lib/x64\" /LIBPATH:\"C:/Program\ Files\ (x86)/Windows\ Kits/10/Lib/${WIN_SDK_VERSION}/ucrt/x64\""
     "-G Ninja"
     RESULT_VARIABLE result
